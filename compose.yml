@@ -1,0 +1,30 @@
+services:
+  #Configura el servicio web para que se construya automáticamente desde nuestro código local y le asigna el nombre fijo django_app para identificarlo fácilmente.
+  web:
+    build: .
+    container_name: django_app
+    # Gunicorn escucha internamente en el 8000
+    expose:
+      - "8000"
+    volumes:
+      - static_volume:/app/static
+    # Usamos personalblog.wsgi porque así se llama tu carpeta
+    command: gunicorn personalblog.wsgi:application --bind 0.0.0.0:8000
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    #Este es el único punto de entrada desde Internet
+    ports:
+      - "80:80"
+      #Permite que Nginx sepa que debe actuar como Proxy Inverso hacia Gunicorn y que debe servir los archivos estáticos.
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - static_volume:/app/static
+      #Nginx no arrancará hasta que el servicio web esté listo
+    depends_on:
+      - web
+
+#Django genera los archivos estáticos (CSS/JS) y los guarda en static_volume. Nginx monta ese mismo volumen para leerlos y entregárselos al usuario directamente
+volumes:
+  static_volume:

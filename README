@@ -1,0 +1,43 @@
+# Personal Blog - Docker Deployment (Stage 2)
+
+Este proyecto es un blog personal desarrollado en Django, dockerizado siguiendo las pautas de despliegue de producción utilizando un servidor de aplicaciones (**Gunicorn**) y un proxy inverso (**Nginx**).
+
+##  Arquitectura del Proyecto
+
+Siguiendo el flujo del curso (Pág. 110-119), la infraestructura se divide en dos servicios principales:
+
+1.  **Web (Django + Gunicorn):** Procesa la lógica de negocio y las consultas a la base de datos.
+2.  **Nginx:** Actúa como proxy inverso, recibiendo las peticiones en el puerto 80 y sirviendo directamente los archivos estáticos (`/static/`) y multimedia (`/media/`).
+
+
+
+## Requisitos Previos
+
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y en funcionamiento.
+* WSL2 configurado (para usuarios de Windows).
+
+## Configuración de Archivos Estáticos
+
+Para evitar el error `staticfiles.E002`, el proyecto utiliza la siguiente configuración en `settings.py`:
+
+* **STATICFILES_DIRS:** Apunta a `static_dev/` (archivos en desarrollo).
+* **STATIC_ROOT:** Apunta a `static/` (donde Gunicorn y Nginx recogen los archivos tras el comando `collectstatic`).
+
+##  Instrucciones de Despliegue
+
+1.  **Limpiar contenedores previos:**
+    Si experimentas conflictos con nombres de contenedores, ejecuta:
+    ```bash
+    docker compose down
+    docker rm -f nginx_proxy django_app
+    ```
+
+2.  **Construir y levantar la infraestructura:**
+    Desde la raíz del proyecto (donde se encuentra `compose.yml`), ejecuta:
+    ```bash
+    docker compose up --build
+    ```
+
+3.  **Acceso:**
+    Una vez finalizado el proceso, el blog estará disponible en:
+    * **URL:** [http://localhost](http://localhost)
