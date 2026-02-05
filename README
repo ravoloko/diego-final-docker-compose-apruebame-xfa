@@ -1,43 +1,53 @@
-# Personal Blog - Docker Deployment (Stage 2)
+#  Proyecto Final: Despliegue de Infraestructura Web
+## Estudiante: [Jose Dominguez] | Docente: Diego Ayala
 
-Este proyecto es un blog personal desarrollado en Django, dockerizado siguiendo las pautas de despliegue de producción utilizando un servidor de aplicaciones (**Gunicorn**) y un proxy inverso (**Nginx**).
+Este repositorio contiene la implementación profesional del Blog Personal utilizando **Django 5**, orquestado con **Docker Compose** en una arquitectura de alta disponibilidad con **Nginx** y **Gunicorn**.
 
-##  Arquitectura del Proyecto
+---
 
-Siguiendo el flujo del curso (Pág. 110-119), la infraestructura se divide en dos servicios principales:
+## 1. Arquitectura del Sistema
+Se ha eliminado del proyecto de Laura todo lo que tenia que ver con servicios o codigo que hacia referencia al live server
+Siguiendo las pautas de las páginas 110-119 del material docente, se ha pasado de un entorno monolítico a uno de **microservicios**. La infraestructura se compone de:
 
-1.  **Web (Django + Gunicorn):** Procesa la lógica de negocio y las consultas a la base de datos.
-2.  **Nginx:** Actúa como proxy inverso, recibiendo las peticiones en el puerto 80 y sirviendo directamente los archivos estáticos (`/static/`) y multimedia (`/media/`).
+### A. Capa de Proxy Inverso (Nginx)
+* **Puerto Externo:** 80 (HTTP estándar).
+* **Función:** Recibe las peticiones del navegador. Si la petición es de un archivo estático o multimedia, Nginx la resuelve directamente desde el volumen. Si es una petición dinámica, la redirige al servidor de aplicaciones.
+* **Seguridad:** Oculta la cabecera del servidor de aplicaciones (Gunicorn) para evitar ataques dirigidos.
+
+
+### B. Capa de Aplicación (Django + Gunicorn)
+* **Servidor WSGI:** Gunicorn (Green Unicorn).
+* **Configuración:** Ejecuta la aplicación mediante *workers* síncronos, permitiendo manejar múltiples peticiones en paralelo.
+* **Aislamiento:** No expone puertos al exterior (puerto 8000 interno), quedando protegido detrás del cortafuegos que supone Nginx.
+
+---
+
+## 💾 2. Gestión Avanzada de Volúmenes
+La persistencia es el pilar de este despliegue. Se han configurado tres tipos de montajes para garantizar la integridad de los datos:
+
+1.  **`static_volume` (Named Volume):** Es el punto de encuentro donde el comando `collectstatic` deposita los archivos CSS/JS y Nginx los recoge.
+2.  **`media_volume` (Named Volume):** Contenedor de persistencia para imágenes subidas por usuarios. Es vital para que los datos no se destruyan al recrear los contenedores.
+3.  **`nginx_config` (Bind Mount):** Vincula el directorio `./nginx/conf.d/` local con el contenedor. Esto permite aplicar cambios en la configuración del servidor web en caliente sin reconstruir la imagen de Docker.
 
 
 
-## Requisitos Previos
+---
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y en funcionamiento.
-* WSL2 configurado (para usuarios de Windows).
+## ⚙️ 3. Configuración de Archivos Estáticos
+Para evitar errores de referencia (como el `staticfiles.E002`), se ha implementado la jerarquía recomendada en el curso:
 
-## Configuración de Archivos Estáticos
+* **Entorno de Desarrollo (`static_dev/`):** Aquí se almacenan los archivos originales (Tailwind, imágenes de diseño).
+* **Entorno de Producción (`static/`):** Directorio raíz donde se compila todo el estático tras la ejecución de `python manage.py collectstatic`.
 
-Para evitar el error `staticfiles.E002`, el proyecto utiliza la siguiente configuración en `settings.py`:
+En el `Dockerfile`, este proceso se automatiza para asegurar que la imagen esté lista para producción desde el primer segundo.
 
-* **STATICFILES_DIRS:** Apunta a `static_dev/` (archivos en desarrollo).
-* **STATIC_ROOT:** Apunta a `static/` (donde Gunicorn y Nginx recogen los archivos tras el comando `collectstatic`).
 
-##  Instrucciones de Despliegue
 
-1.  **Limpiar contenedores previos:**
-    Si experimentas conflictos con nombres de contenedores, ejecuta:
-    ```bash
-    docker compose down
-    docker rm -f nginx_proxy django_app
-    ```
+---
 
-2.  **Construir y levantar la infraestructura:**
-    Desde la raíz del proyecto (donde se encuentra `compose.yml`), ejecuta:
-    ```bash
-    docker compose up --build
-    ```
+## 🚀 4. Guía de Ejecución Paso a Paso
 
-3.  **Acceso:**
-    Una vez finalizado el proceso, el blog estará disponible en:
-    * **URL:** [http://localhost](http://localhost)
+### Paso 1: Preparación del entorno
+Es recomendable limpiar cualquier rastro de ejecuciones previas de Docker para evitar conflictos de IPs o nombres:
+```bash
+docker compose down -v
